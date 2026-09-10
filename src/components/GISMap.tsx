@@ -57,12 +57,12 @@ const LAYER_CONFIG: { id: MapLayer; label: string; icon: React.ReactNode; color:
 ];
 
 const QUICK_SUGGESTIONS = [
-  { name: "Tawang", lat: 27.5879, lng: 91.8637, district: "Tawang", state: "Arunachal Pradesh" },
-  { name: "Haflong", lat: 25.1788, lng: 93.0205, district: "Dima Hasao", state: "Assam" },
-  { name: "Kohima", lat: 25.6751, lng: 94.1086, district: "Kohima", state: "Nagaland" },
-  { name: "Cherrapunji", lat: 25.2702, lng: 91.7323, district: "East Khasi Hills", state: "Meghalaya" },
-  { name: "Gangtok", lat: 27.3389, lng: 88.6065, district: "East Sikkim", state: "Sikkim" },
-  { name: "Bomdila", lat: 27.2645, lng: 92.4239, district: "West Kameng", state: "Arunachal Pradesh" },
+  { name: "Tawang", lat: 27.5879, lng: 91.8637, district: "Mountain Scarp", state: "Arunachal Pradesh" },
+  { name: "Haflong", lat: 25.1788, lng: 93.0205, district: "Highland Ridge", state: "Assam" },
+  { name: "Kohima", lat: 25.6751, lng: 94.1086, district: "Barail Range", state: "Nagaland" },
+  { name: "Cherrapunji", lat: 25.2702, lng: 91.7323, district: "Khasi Plateau", state: "Meghalaya" },
+  { name: "Delhi", lat: 28.6139, lng: 77.2090, district: "Flat Alluvial Plain", state: "Delhi NCR" },
+  { name: "Lucknow", lat: 26.8467, lng: 80.9462, district: "Gangetic Basin", state: "Uttar Pradesh" },
 ];
 
 interface SearchResult {
@@ -398,7 +398,7 @@ export function GISMap({
                 <div className="p-3">
                   <div className="text-[9px] font-bold text-slate-400 mb-2 tracking-wider flex items-center gap-1">
                     <Navigation size={10} />
-                    POPULAR NER PASSES & TOWNS
+                    BENCHMARK TOPOGRAPHY & NER ZONES
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {QUICK_SUGGESTIONS.map((item) => (
