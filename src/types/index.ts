@@ -88,5 +88,8 @@ export interface InspectedLocation {
   soilMoisture: number;
   trigger: string;
   isLoading?: boolean;
+  elevation?: number;
+  isFlat?: boolean;
+  terrainCategory?: string;
 }
 

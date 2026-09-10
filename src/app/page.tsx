@@ -57,6 +57,48 @@ export default function Home() {
 
   const t = TRANSLATIONS[language];
   const selectedZone = zones.find((z) => z.id === selectedZoneId) || zones[0];
+
+  // Dynamically synchronize clicked/searched location with AI Engine
+  const displayedZone: NERZone = inspectedLocation
+    ? {
+        id: `inspected-${inspectedLocation.lat.toFixed(4)}-${inspectedLocation.lng.toFixed(4)}`,
+        name: inspectedLocation.name,
+        district: inspectedLocation.district,
+        state: inspectedLocation.state,
+        lat: inspectedLocation.lat,
+        lng: inspectedLocation.lng,
+        risk: inspectedLocation.risk,
+        riskScore: inspectedLocation.riskScore,
+        rainfall24h: inspectedLocation.rainfall24h,
+        soilMoisture: inspectedLocation.soilMoisture,
+        slope: inspectedLocation.slope,
+        trigger: inspectedLocation.trigger,
+        lastUpdated: new Date().toISOString(),
+        affectedPopulation: inspectedLocation.slope < 10 ? 0 : 3500,
+        roadBlockages:
+          inspectedLocation.risk === "CRITICAL"
+            ? ["Precautionary Terrain Inspection Sector"]
+            : [],
+        sensors: [
+          {
+            id: "S-INSPECT",
+            type: "Virtual InSAR / Geotechnical Sensor",
+            status: "online",
+            battery: 98,
+          },
+        ],
+      }
+    : selectedZone;
+
+  const displayedRainfallLive = inspectedLocation
+    ? {
+        rainfall24h: inspectedLocation.rainfall24h,
+        currentPrecipitation: inspectedLocation.currentPrecipitation,
+        fetchedAt: new Date().toISOString(),
+        source: "live" as const,
+      }
+    : (rainfallMap.get(selectedZoneId) ?? null);
+
   const criticalCount = zones.filter((z) => z.risk === "CRITICAL").length;
   const highCount = zones.filter((z) => z.risk === "HIGH").length;
   const totalAffected = zones.reduce((s, z) => s + z.affectedPopulation, 0);
@@ -248,7 +290,10 @@ export default function Home() {
         <ZoneSidebar
           zones={zones}
           selectedZoneId={selectedZoneId}
-          onSelectZone={setSelectedZoneId}
+          onSelectZone={(id) => {
+            setSelectedZoneId(id);
+            setInspectedLocation(null);
+          }}
           t={t}
         />
 
@@ -257,7 +302,10 @@ export default function Home() {
           <GISMap
             zones={zones}
             selectedZoneId={selectedZoneId}
-            onSelectZone={setSelectedZoneId}
+            onSelectZone={(id) => {
+              setSelectedZoneId(id);
+              setInspectedLocation(null);
+            }}
             onAddZone={handleAddZone}
             inspectedLocation={inspectedLocation}
             onInspectLocation={setInspectedLocation}
@@ -267,7 +315,7 @@ export default function Home() {
             className="border-t"
             style={{ borderColor: "var(--border-subtle)", height: "160px" }}
           >
-            <SensorFeed zones={zones} selectedZone={selectedZone} />
+            <SensorFeed zones={zones} selectedZone={displayedZone} />
           </div>
         </div>
 
@@ -282,9 +330,11 @@ export default function Home() {
         >
           {/* AI Engine */}
           <AIEngine
-            zone={selectedZone}
-            rainfallLive={rainfallMap.get(selectedZoneId) ?? null}
+            zone={displayedZone}
+            rainfallLive={displayedRainfallLive}
             t={t}
+            isInspected={Boolean(inspectedLocation)}
+            onClearInspected={() => setInspectedLocation(null)}
           />
 
           {/* Alert Broadcast */}

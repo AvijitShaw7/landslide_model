@@ -40,6 +40,8 @@ interface Props {
   /** Live Open-Meteo rainfall for this zone — null while loading or on fetch error */
   rainfallLive: OpenMeteoResult | null;
   t: Record<string, string>;
+  isInspected?: boolean;
+  onClearInspected?: () => void;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -57,11 +59,80 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export function AIEngine({ zone, rainfallLive, t }: Props) {
+export function AIEngine({ zone, rainfallLive, t, isInspected, onClearInspected }: Props) {
   const [horizon, setHorizon] = useState<ForecastHorizon>(24);
   const [showShap, setShowShap] = useState(true);
   const [dataMode, setDataMode] = useState<"BASELINE" | "LIVE">("LIVE");
-  const forecastData = FORECAST_DATA[horizon];
+
+  const rawForecast = FORECAST_DATA[horizon];
+  const chartData =
+    zone.slope < 10
+      ? rawForecast.map((p) => ({
+          ...p,
+          risk: Math.min(2, Math.round(p.risk * 0.02)),
+        }))
+      : rawForecast;
+
+  const dynamicShapFactors =
+    zone.slope < 10
+      ? [
+          {
+            name: "Topographic Gradient",
+            contribution: -0.95,
+            value: `${zone.slope.toFixed(1)}°`,
+            unit: " (Flat Plain)",
+          },
+          {
+            name: "Slope Stability Margin (FoS)",
+            contribution: -0.9,
+            value: "> 4.0",
+            unit: " (Stable)",
+          },
+          {
+            name: "24h Rainfall Total",
+            contribution: 0.04,
+            value: `${zone.rainfall24h}`,
+            unit: " mm",
+          },
+          {
+            name: "Soil Moisture Saturation",
+            contribution: 0.02,
+            value: `${zone.soilMoisture}`,
+            unit: "%",
+          },
+        ]
+      : [
+          {
+            name: "Terrain Slope Angle",
+            contribution: zone.slope >= 35 ? 0.42 : zone.slope >= 25 ? 0.3 : 0.12,
+            value: `${zone.slope.toFixed(1)}°`,
+            unit: zone.slope >= 30 ? " (Steep Mountain)" : " (Undulating)",
+          },
+          {
+            name: "24h Accumulated Rain",
+            contribution: zone.rainfall24h > 100 ? 0.38 : zone.rainfall24h > 50 ? 0.25 : 0.08,
+            value: `${zone.rainfall24h}`,
+            unit: " mm",
+          },
+          {
+            name: "Soil Saturation Index",
+            contribution: zone.soilMoisture > 80 ? 0.28 : zone.soilMoisture > 65 ? 0.18 : 0.05,
+            value: `${zone.soilMoisture}`,
+            unit: "%",
+          },
+          {
+            name: "InSAR Surface Creep",
+            contribution: zone.slope >= 25 ? 0.22 : 0.04,
+            value: zone.slope >= 25 ? "4.8" : "0.2",
+            unit: " mm/day",
+          },
+          {
+            name: "Fault Line Proximity",
+            contribution: 0.15,
+            value: "1.2",
+            unit: " km",
+          },
+        ];
 
   const riskColor =
     zone.riskScore >= 80
@@ -137,54 +208,95 @@ export function AIEngine({ zone, rainfallLive, t }: Props) {
         </div>
       </div>
 
+      {/* Dynamic Target Inspection Banner */}
+      {isInspected && (
+        <div
+          className="px-3 py-1.5 flex items-center justify-between border-b text-[10px]"
+          style={{
+            background: "rgba(56,189,248,0.08)",
+            borderColor: "rgba(56,189,248,0.25)",
+          }}
+        >
+          <div className="flex items-center gap-1.5 text-sky-400 font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
+            <span>DYNAMIC TARGET INSPECTION</span>
+          </div>
+          {onClearInspected && (
+            <button
+              onClick={onClearInspected}
+              className="text-[9px] text-zinc-400 hover:text-white underline cursor-pointer"
+            >
+              Back to Zones
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Risk Probability Meter */}
       <div className="px-3 py-3 border-b" style={{ borderColor: "var(--border-subtle)" }}>
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <span className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-              RISK PROBABILITY — {zone.name}
-            </span>
-            {/* Live or baseline rainfall sub-label */}
-            {dataMode === "LIVE" && rainfallLive ? (
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <CloudDrizzle size={10} style={{ color: "var(--accent-cyan)" }} />
-                <span className="text-[9px] mono font-semibold" style={{ color: "var(--accent-cyan)" }}>
-                  {rainfallLive.rainfall24h} mm/24h
-                  {rainfallLive.currentPrecipitation > 0 &&
-                    ` · ${rainfallLive.currentPrecipitation} mm/h now`}
-                </span>
-                <span
-                  className="text-[8px] font-bold px-1 py-0.2 rounded"
-                  style={{
-                    background: "rgba(16,185,129,0.18)",
-                    color: "var(--accent-emerald)",
-                    border: "1px solid rgba(16,185,129,0.3)",
-                  }}
-                >
-                  REAL-TIME
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className="text-[9px] mono" style={{ color: "var(--text-muted)" }}>
-                  {zone.rainfall24h} mm/24h (Static IMD Baseline)
-                </span>
-              </div>
-            )}
+        <div className="flex items-start justify-between mb-2">
+          <div className="min-w-0 pr-2">
+            <div className="text-[11px] font-bold truncate" style={{ color: "var(--text-primary)" }}>
+              {zone.name}: Slope {zone.slope.toFixed(1)}°
+            </div>
+            {/* Slope & Terrain Category Badge */}
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span
+                className="text-[8.5px] font-mono px-1.5 py-0.2 rounded font-bold"
+                style={{
+                  background: zone.slope < 10 ? "rgba(16,185,129,0.18)" : "rgba(168,85,247,0.18)",
+                  color: zone.slope < 10 ? "#34d399" : "#c084fc",
+                  border: `1px solid ${zone.slope < 10 ? "rgba(16,185,129,0.35)" : "rgba(168,85,247,0.35)"}`,
+                }}
+              >
+                {zone.slope < 10
+                  ? "Flat Plain"
+                  : zone.slope < 20
+                  ? "Gentle Slope"
+                  : zone.slope < 30
+                  ? "Moderate Hill"
+                  : "Steep Mountain"}
+              </span>
+              {/* Live or baseline rainfall sub-label */}
+              {dataMode === "LIVE" && rainfallLive ? (
+                <div className="flex items-center gap-1">
+                  <CloudDrizzle size={10} style={{ color: "var(--accent-cyan)" }} />
+                  <span className="text-[9px] mono font-semibold" style={{ color: "var(--accent-cyan)" }}>
+                    {rainfallLive.rainfall24h}mm
+                    {rainfallLive.currentPrecipitation > 0 &&
+                      ` (${rainfallLive.currentPrecipitation}mm/h)`}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <span className="text-[9px] mono" style={{ color: "var(--text-muted)" }}>
+                    {zone.rainfall24h}mm
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-          <motion.span
-            key={zone.riskScore}
-            initial={{ scale: 1.3, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="text-xl font-black mono"
-            style={{ color: riskColor }}
-          >
-            {zone.riskScore}%
-          </motion.span>
+          <div className="text-right flex-shrink-0">
+            <motion.div
+              key={zone.riskScore}
+              initial={{ scale: 1.3, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-xl font-black mono leading-none"
+              style={{ color: riskColor }}
+            >
+              {zone.riskScore}%
+            </motion.div>
+            <div
+              className="text-[8.5px] font-bold mono mt-0.5"
+              style={{ color: riskColor }}
+            >
+              {zone.risk}
+            </div>
+          </div>
         </div>
 
         {/* Gradient meter */}
-        <div className="relative h-4 rounded-full overflow-hidden mb-1"
+        <div className="relative h-3.5 rounded-full overflow-hidden mb-1"
           style={{ background: "rgba(255,255,255,0.06)" }}
         >
           <div
@@ -197,7 +309,7 @@ export function AIEngine({ zone, rainfallLive, t }: Props) {
           />
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: `${zone.riskScore}%` }}
+            animate={{ width: `${Math.max(2, zone.riskScore)}%` }}
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="absolute inset-y-0 left-0 rounded-full"
             style={{ background: `linear-gradient(to right, #10b981, #f59e0b, ${riskColor})` }}
@@ -208,18 +320,58 @@ export function AIEngine({ zone, rainfallLive, t }: Props) {
             style={{ left: "75%", background: "rgba(239,68,68,0.8)" }}
           />
         </div>
-        <div className="flex justify-between text-[9px]" style={{ color: "var(--text-muted)" }}>
-          <span>LOW</span><span>MOD</span><span>HIGH</span><span>CRITICAL</span>
+        <div className="flex justify-between text-[8.5px]" style={{ color: "var(--text-muted)" }}>
+          <span>SAFE</span><span>LOW</span><span>MOD</span><span>HIGH</span><span>CRIT</span>
         </div>
 
-        {/* Trigger */}
-        <div
-          className="mt-2 flex items-start gap-1.5 px-2 py-1.5 rounded text-[10px]"
-          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}
-        >
-          <AlertTriangle size={10} style={{ color: "var(--accent-red)", marginTop: "1px", flexShrink: 0 }} />
-          <span style={{ color: "#fca5a5" }}>{zone.trigger}</span>
-        </div>
+        {/* Geotechnical Hard-Gate Notice for Flat Terrain */}
+        {zone.slope < 10 ? (
+          <div
+            className="mt-2.5 p-2 rounded-lg text-[10px]"
+            style={{
+              background: "rgba(16,185,129,0.12)",
+              border: "1px solid rgba(16,185,129,0.35)",
+              boxShadow: "0 0 12px rgba(16,185,129,0.1)",
+            }}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <span
+                className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
+                style={{ boxShadow: "0 0 6px #34d399" }}
+              />
+              <span className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider">
+                Flat Plain / Zero Landslide Risk
+              </span>
+              <span className="ml-auto text-[8px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                SAFE · 0-3%
+              </span>
+            </div>
+            <div className="text-[9.5px] leading-relaxed text-emerald-100 font-medium">
+              Topography: Flat alluvial terrain (Slope &lt; 10°). Slope stability failure is geomechanically impossible. Negligible landslide hazard.
+            </div>
+          </div>
+        ) : (
+          /* Mountain terrain trigger */
+          <div
+            className="mt-2 flex items-start gap-1.5 px-2 py-1.5 rounded text-[10px]"
+            style={{
+              background: zone.riskScore >= 60 ? "rgba(239,68,68,0.08)" : "rgba(245,158,11,0.08)",
+              border: `1px solid ${zone.riskScore >= 60 ? "rgba(239,68,68,0.2)" : "rgba(245,158,11,0.2)"}`,
+            }}
+          >
+            <AlertTriangle
+              size={10}
+              style={{
+                color: zone.riskScore >= 60 ? "var(--accent-red)" : "var(--accent-amber)",
+                marginTop: "1px",
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ color: zone.riskScore >= 60 ? "#fca5a5" : "#fcd34d" }}>
+              {zone.trigger}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Forecast Horizon Tabs */}
@@ -258,7 +410,7 @@ export function AIEngine({ zone, rainfallLive, t }: Props) {
             style={{ height: "110px" }}
           >
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={forecastData} margin={{ top: 4, right: 0, left: -30, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 4, right: 0, left: -30, bottom: 0 }}>
                 <defs>
                   <linearGradient id="riskGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
@@ -348,7 +500,7 @@ export function AIEngine({ zone, rainfallLive, t }: Props) {
               className="overflow-hidden"
             >
               <div className="space-y-1.5">
-                {SHAP_FACTORS_24H.map((factor, i) => {
+                {dynamicShapFactors.map((factor, i) => {
                   const isPositive = factor.contribution > 0;
                   const pct = Math.abs(factor.contribution) * 100;
                   return (

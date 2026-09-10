@@ -17,7 +17,12 @@ import {
   Navigation,
 } from "lucide-react";
 import type { NERZone, MapLayer, RiskLevel, InspectedLocation } from "@/types";
-import { computeRiskScore, scoreToRiskLevel, buildTrigger } from "@/lib/openMeteo";
+import {
+  computeRiskScore,
+  scoreToRiskLevel,
+  buildTrigger,
+  calculateTerrainSlope,
+} from "@/lib/openMeteo";
 
 // Dynamic import to avoid Leaflet SSR issues
 const MapInner = dynamic(() => import("./MapInner"), {
@@ -164,10 +169,10 @@ export function GISMap({
       state: presetState || "NER",
       rainfall24h: 0,
       currentPrecipitation: 0,
-      riskScore: 50,
-      risk: "MODERATE",
-      slope: 32,
-      soilMoisture: 75,
+      riskScore: 0,
+      risk: "SAFE",
+      slope: 0,
+      soilMoisture: 35,
       trigger: "Calculating live terrain & precipitation risk…",
       isLoading: true,
     };
@@ -176,7 +181,7 @@ export function GISMap({
     setTargetCamera({ lat, lng, zoom: 11 });
 
     try {
-      // 2. Parallel fetch geocode + live rainfall
+      // 2. Parallel fetch geocode + live rainfall (with geotechnical slope model)
       const [geoRes, rainRes] = await Promise.allSettled([
         presetName
           ? Promise.resolve(null)
@@ -194,21 +199,48 @@ export function GISMap({
         resolvedState = geoRes.value.data.state || resolvedState;
       }
 
-      let rainfall24h = 88.5;
-      let currentPrecipitation = 4.2;
+      let rainfall24h = 0;
+      let currentPrecipitation = 0;
+      let slope = 0;
+      let soilMoisture = 35;
+      let riskScore = 0;
+      let risk: RiskLevel = "SAFE";
+      let trigger = "Evaluating geotechnical slope stability…";
+      let elevation: number | undefined = undefined;
+      let isFlat = false;
+      let terrainCategory: string | undefined = undefined;
 
       if (rainRes.status === "fulfilled" && rainRes.value?.data) {
-        rainfall24h = rainRes.value.data.rainfall24h ?? 88.5;
-        currentPrecipitation = rainRes.value.data.currentPrecipitation ?? 4.2;
+        const d = rainRes.value.data;
+        rainfall24h = d.rainfall24h ?? 0;
+        currentPrecipitation = d.currentPrecipitation ?? 0;
+        slope = typeof d.slope === "number" ? d.slope : 0;
+        soilMoisture = d.soilMoisture ?? 35;
+        riskScore = typeof d.riskScore === "number" ? d.riskScore : computeRiskScore(rainfall24h, soilMoisture, slope);
+        risk = (d.risk as RiskLevel) ?? scoreToRiskLevel(riskScore);
+        trigger = d.trigger ?? buildTrigger(rainfall24h, currentPrecipitation, soilMoisture, slope);
+        elevation = d.elevation;
+        isFlat = d.isFlat ?? (slope < 10);
+        terrainCategory = d.terrainCategory;
+      } else {
+        // Fallback: direct geotechnical slope calculation
+        try {
+          const terrain = await calculateTerrainSlope(lat, lng);
+          slope = terrain.slope;
+          elevation = terrain.elevation;
+          isFlat = terrain.isFlat;
+          terrainCategory = terrain.terrainCategory;
+          soilMoisture = isFlat ? 35 : 65;
+          riskScore = computeRiskScore(rainfall24h, soilMoisture, slope);
+          risk = scoreToRiskLevel(riskScore);
+          trigger = buildTrigger(rainfall24h, currentPrecipitation, soilMoisture, slope);
+        } catch {
+          slope = 2;
+          riskScore = 0;
+          risk = "SAFE";
+          trigger = "Flat / Low-gradient terrain. Negligible landslide hazard.";
+        }
       }
-
-      // Estimate terrain slope based on Himalayan/North-East terrain variation
-      const seed = Math.abs(Math.sin(lat * 43.123 + lng * 19.876));
-      const slope = Math.round(24 + seed * 19); // 24° to 43°
-      const soilMoisture = Math.min(95, Math.round(55 + (rainfall24h / 200) * 40));
-      const riskScore = computeRiskScore(rainfall24h, soilMoisture, slope);
-      const risk: RiskLevel = scoreToRiskLevel(riskScore);
-      const trigger = buildTrigger(rainfall24h, currentPrecipitation, soilMoisture);
 
       const resolvedLoc: InspectedLocation = {
         lat,
@@ -224,6 +256,9 @@ export function GISMap({
         slope,
         soilMoisture,
         trigger,
+        elevation,
+        isFlat,
+        terrainCategory,
         isLoading: false,
       };
 

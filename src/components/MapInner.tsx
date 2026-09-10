@@ -309,8 +309,25 @@ export default function MapInner({
                     </div>
                     <div>
                       <div style={{ fontSize: "9px", color: "#64748b", fontWeight: 600 }}>TERRAIN SLOPE</div>
-                      <div style={{ fontSize: "12px", fontWeight: 700, fontFamily: "monospace", color: "#a855f7" }}>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          fontFamily: "monospace",
+                          color: inspectedLocation.slope < 10 ? "#34d399" : "#a855f7",
+                        }}
+                      >
                         {inspectedLocation.slope}°
+                        <span
+                          style={{
+                            fontSize: "8.5px",
+                            marginLeft: "3px",
+                            fontWeight: 600,
+                            color: inspectedLocation.slope < 10 ? "#34d399" : "#94a3b8",
+                          }}
+                        >
+                          ({inspectedLocation.slope < 10 ? "Flat" : inspectedLocation.slope < 20 ? "Gentle" : "Steep"})
+                        </span>
                       </div>
                     </div>
                     <div>
@@ -320,6 +337,39 @@ export default function MapInner({
                       </div>
                     </div>
                   </div>
+
+                  {/* Geotechnical Hard-Gate Notice for Flat Terrain */}
+                  {inspectedLocation.slope < 10 && (
+                    <div
+                      style={{
+                        padding: "8px 10px",
+                        borderRadius: "6px",
+                        background: "rgba(16,185,129,0.12)",
+                        border: "1px solid rgba(16,185,129,0.35)",
+                        marginBottom: "10px",
+                        boxShadow: "0 0 10px rgba(16,185,129,0.15)",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+                        <span
+                          style={{
+                            width: "7px",
+                            height: "7px",
+                            borderRadius: "50%",
+                            background: "#34d399",
+                            display: "inline-block",
+                            boxShadow: "0 0 6px #34d399",
+                          }}
+                        />
+                        <span style={{ fontSize: "10px", fontWeight: 800, color: "#34d399" }}>
+                          Flat Plain / Zero Landslide Risk
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "9.5px", color: "#a7f3d0", lineHeight: "1.35" }}>
+                        Topography: Flat alluvial terrain (Slope {inspectedLocation.slope.toFixed(1)}° &lt; 10°). Slope stability failure is geomechanically impossible. Negligible landslide hazard.
+                      </div>
+                    </div>
+                  )}
 
                   {/* Add Zone Action Button */}
                   <button
