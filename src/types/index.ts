@@ -27,6 +27,14 @@ export interface NERZone {
     status: "online" | "offline" | "degraded";
     battery: number;
   }[];
+  isMLInference?: boolean;
+  modelType?: string;
+  rainfall72h?: number;
+  api15d?: number;
+  lithologyIndex?: number;
+  lithology?: string;
+  featureContributions?: Array<{ feature: string; importance_pct: number; value: number; label: string }>;
+  isSimulated?: boolean;
 }
 
 export interface SHAPFactor {
@@ -91,5 +99,12 @@ export interface InspectedLocation {
   elevation?: number;
   isFlat?: boolean;
   terrainCategory?: string;
+  rainfall72h?: number;
+  api15d?: number;
+  lithologyIndex?: number;
+  lithology?: string;
+  featureContributions?: Array<{ feature: string; importance_pct: number; value: number; label: string }>;
+  isMLInference?: boolean;
+  modelType?: string;
+  isSimulated?: boolean;
 }
-

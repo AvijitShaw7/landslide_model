@@ -6,8 +6,8 @@
  * Client-side hook that:
  *  1. On initial mount and intervals, calls the server-side route `/api/rainfall`.
  *  2. On response receiving `success: true`, immediately updates state:
- *     isOnline = true, isLoading = false.
- *  3. Merges live rainfall into NER zones with re-derived riskScore & risk level.
+ *     isOnline = true, isLoading = false, isMLInference = true/false.
+ *  3. Merges live rainfall & ML risk scores into NER zones.
  *  4. Supports adding dynamic custom zones from map inspection or town search.
  *  5. Provides refetch() with console logging.
  */
@@ -29,6 +29,7 @@ export interface UseOpenMeteoRainfallReturn {
   rainfallMap: Map<string, OpenMeteoResult>;
   isLoading: boolean;
   isOnline: boolean;
+  isMLInference: boolean;
   lastFetched: Date | null;
   errors: Set<string>;
   refetch: () => Promise<void>;
@@ -43,6 +44,7 @@ export function useOpenMeteoRainfall(): UseOpenMeteoRainfallReturn {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
+  const [isMLInference, setIsMLInference] = useState(false);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [errors, setErrors] = useState<Set<string>>(new Set());
 
@@ -67,21 +69,31 @@ export function useOpenMeteoRainfall(): UseOpenMeteoRainfallReturn {
 
       if (json && json.success) {
         const liveMap = new Map<string, OpenMeteoResult>();
+        const itemMap = new Map<string, any>();
 
         if (Array.isArray(json.data)) {
           for (const item of json.data) {
+            itemMap.set(item.id, item);
             liveMap.set(item.id, {
               rainfall24h: item.rainfall24h,
               currentPrecipitation: item.currentPrecipitation ?? 0,
               fetchedAt: item.fetchedAt || json.timestamp,
               source: item.source || "live",
+              isMLInference: item.isMLInference ?? false,
+              modelType: item.modelType,
+              featureContributions: item.featureContributions,
+              isSimulated: item.isSimulated ?? false,
             });
           }
         }
 
-        // Merge live data into base zone definitions
+        const mlActive = Boolean(json.isMLInference);
+        setIsMLInference(mlActive);
+
+        // Merge live data and ML inference into base zone definitions
         const updatedBaseZones: NERZone[] = NER_ZONES.map((zone) => {
           const live = liveMap.get(zone.id);
+          const liveItem = itemMap.get(zone.id);
 
           if (!live) {
             return {
@@ -90,16 +102,17 @@ export function useOpenMeteoRainfall(): UseOpenMeteoRainfallReturn {
             };
           }
 
-          const newScore = computeRiskScore(
-            live.rainfall24h,
-            zone.soilMoisture,
-            zone.slope
-          );
-          const newRisk = scoreToRiskLevel(newScore);
-          const newTrigger = buildTrigger(
+          // Use ML model output if available, otherwise heuristic formula
+          const newScore = typeof liveItem?.riskScore === "number"
+            ? liveItem.riskScore
+            : computeRiskScore(live.rainfall24h, zone.soilMoisture, zone.slope);
+
+          const newRisk = liveItem?.risk || scoreToRiskLevel(newScore);
+          const newTrigger = liveItem?.trigger || buildTrigger(
             live.rainfall24h,
             live.currentPrecipitation,
-            zone.soilMoisture
+            zone.soilMoisture,
+            zone.slope
           );
 
           return {
@@ -108,6 +121,13 @@ export function useOpenMeteoRainfall(): UseOpenMeteoRainfallReturn {
             riskScore: newScore,
             risk: newRisk,
             trigger: newTrigger,
+            isMLInference: liveItem?.isMLInference ?? mlActive,
+            modelType: liveItem?.modelType,
+            rainfall72h: liveItem?.rainfall72h,
+            api15d: liveItem?.api15d,
+            lithologyIndex: liveItem?.lithologyIndex,
+            featureContributions: liveItem?.featureContributions,
+            isSimulated: liveItem?.isSimulated ?? false,
             lastUpdated: live.fetchedAt,
           };
         });
@@ -120,6 +140,8 @@ export function useOpenMeteoRainfall(): UseOpenMeteoRainfallReturn {
               currentPrecipitation: 0,
               fetchedAt: cz.lastUpdated,
               source: "live",
+              isMLInference: cz.isMLInference,
+              modelType: cz.modelType,
             });
           }
         }
@@ -131,7 +153,7 @@ export function useOpenMeteoRainfall(): UseOpenMeteoRainfallReturn {
         setIsOnline(true);
         setIsLoading(false);
         setLastFetched(new Date(json.timestamp || Date.now()));
-        console.log("[Weather API] Fresh data synced", new Date().toLocaleTimeString());
+        console.log("[Weather & ML API] Fresh data synced", new Date().toLocaleTimeString());
       } else {
         throw new Error("API returned success: false");
       }
@@ -144,9 +166,12 @@ export function useOpenMeteoRainfall(): UseOpenMeteoRainfallReturn {
           currentPrecipitation: 0,
           fetchedAt: new Date().toISOString(),
           source: "live",
+          isMLInference: false,
+          modelType: "Heuristic Fallback",
         });
       }
       setRainfallMap(fallbackMap);
+      setIsMLInference(false);
       setIsOnline(true);
       setIsLoading(false);
       setLastFetched(new Date());
@@ -173,6 +198,8 @@ export function useOpenMeteoRainfall(): UseOpenMeteoRainfallReturn {
         currentPrecipitation: 0,
         fetchedAt: new Date().toISOString(),
         source: "live",
+        isMLInference: newZone.isMLInference,
+        modelType: newZone.modelType,
       });
       return next;
     });
@@ -194,6 +221,7 @@ export function useOpenMeteoRainfall(): UseOpenMeteoRainfallReturn {
     rainfallMap,
     isLoading,
     isOnline,
+    isMLInference,
     lastFetched,
     errors,
     refetch: doFetch,

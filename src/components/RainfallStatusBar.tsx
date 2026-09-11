@@ -21,6 +21,7 @@ interface Props {
   rainfallMap: Map<string, OpenMeteoResult>;
   isLoading: boolean;
   isOnline?: boolean;
+  isMLInference?: boolean;
   errors: Set<string>;
   lastFetched: Date | null;
   refetch?: () => void;
@@ -63,6 +64,7 @@ export function RainfallStatusBar({
   rainfallMap,
   isLoading,
   isOnline = true,
+  isMLInference = false,
   errors,
   lastFetched,
   refetch,
@@ -103,8 +105,28 @@ export function RainfallStatusBar({
               isOnline ? "bg-emerald-400 animate-pulse shadow-[0_0_4px_#34d399]" : "bg-zinc-500"
             }`}
           />
-          <span>● Open-Meteo LIVE (Real-Time)</span>
+          <span>● Open-Meteo LIVE</span>
         </button>
+
+        {/* ML Engine Status Badge */}
+        <span
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9.5px] font-semibold border"
+          style={{
+            background: isMLInference ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)",
+            borderColor: isMLInference ? "rgba(16,185,129,0.35)" : "rgba(245,158,11,0.35)",
+            color: isMLInference ? "var(--accent-emerald)" : "var(--accent-amber)",
+          }}
+          title={isMLInference ? "Machine Learning microservice active (RandomForest-v1)" : "Python ML service offline - using deterministic GSI geotechnical model"}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              isMLInference ? "bg-emerald-400 animate-pulse shadow-[0_0_4px_#34d399]" : "bg-amber-400"
+            }`}
+          />
+          <span>
+            {isMLInference ? "ML Engine: Active (RandomForest-v1)" : "Heuristic Fallback"}
+          </span>
+        </span>
 
         {lastFetched && !isLoading && (
           <span className="text-[9px] mono" style={{ color: "var(--text-muted)" }}>

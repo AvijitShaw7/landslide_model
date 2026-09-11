@@ -57,6 +57,7 @@ export default function Home() {
     rainfallMap,
     isLoading,
     isOnline,
+    isMLInference,
     lastFetched,
     errors,
     refetch,
@@ -84,6 +85,8 @@ export default function Home() {
         soilMoisture: inspectedLocation.soilMoisture,
         slope: inspectedLocation.slope,
         trigger: inspectedLocation.trigger,
+        isMLInference: inspectedLocation.isMLInference,
+        modelType: inspectedLocation.modelType,
         lastUpdated: new Date().toISOString(),
         affectedPopulation: inspectedLocation.slope < 10 ? 0 : 3500,
         roadBlockages: inspectedLocation.risk === "CRITICAL" ? ["Precautionary Terrain Inspection Sector"] : [],
@@ -115,6 +118,9 @@ export default function Home() {
           setLowBandwidth={setLowBandwidth}
           onCitizenReport={() => setIsReportModalOpen(true)}
         />
+        <AnimatePresence>
+          {lowBandwidth && <LowBandwidthBanner t={t} onClose={() => setLowBandwidth(false)} />}
+        </AnimatePresence>
         <NeevTopbar activePortal={activePortal} setActivePortal={setActivePortal} />
       </div>
       
@@ -130,6 +136,7 @@ export default function Home() {
             handleAddZone={handleAddZone}
             inspectedLocation={inspectedLocation}
             setInspectedLocation={setInspectedLocation}
+            isMLInference={isMLInference}
           />
         )}
         {activePortal === "citizen" && <CitizenPortal />}

@@ -16,6 +16,7 @@ interface Props {
   handleAddZone: (zone: NERZone) => void;
   inspectedLocation: InspectedLocation | null;
   setInspectedLocation: (loc: InspectedLocation | null) => void;
+  isMLInference?: boolean;
 }
 
 export function CommandPortal({
@@ -28,6 +29,7 @@ export function CommandPortal({
   handleAddZone,
   inspectedLocation,
   setInspectedLocation,
+  isMLInference,
 }: Props) {
   return (
     <section className="portal active" id="portal-command" role="tabpanel">
@@ -156,6 +158,7 @@ export function CommandPortal({
             rainfallLive={displayedRainfallLive} 
             isInspected={!!inspectedLocation} 
             onClearInspected={() => setInspectedLocation(null)} 
+            isMLInference={displayedZone.isMLInference ?? isMLInference}
           />
           <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)' }}>
             <div className="cmd-col-header">Early Warning Gateway</div>

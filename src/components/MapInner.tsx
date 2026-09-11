@@ -258,8 +258,25 @@ export default function MapInner({
                 <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
                   {inspectedLocation.district}, {inspectedLocation.state}
                 </div>
-                <div style={{ fontSize: "10px", color: "#64748b", fontFamily: "monospace", marginTop: "2px" }}>
-                  {inspectedLocation.lat.toFixed(4)}°N, {inspectedLocation.lng.toFixed(4)}°E
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "2px" }}>
+                  <span style={{ fontSize: "10px", color: "#64748b", fontFamily: "monospace" }}>
+                    {inspectedLocation.lat.toFixed(4)}°N, {inspectedLocation.lng.toFixed(4)}°E
+                  </span>
+                  {inspectedLocation.isSimulated && (
+                    <span
+                      style={{
+                        fontSize: "8.5px",
+                        padding: "1px 5px",
+                        borderRadius: "3px",
+                        background: "rgba(245,158,11,0.15)",
+                        color: "#fbbf24",
+                        border: "1px solid rgba(245,158,11,0.35)",
+                        fontWeight: 700,
+                      }}
+                    >
+                      ⚡ Cached / Offline Fallback
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -271,20 +288,22 @@ export default function MapInner({
                 </div>
               ) : (
                 <>
+                  {/* Core Metrics Grid — 2 columns */}
                   <div
                     style={{
                       display: "grid",
                       gridTemplateColumns: "1fr 1fr",
-                      gap: "8px",
+                      gap: "7px",
                       background: "rgba(15,23,42,0.6)",
                       border: "1px solid rgba(255,255,255,0.06)",
                       padding: "8px",
                       borderRadius: "6px",
-                      marginBottom: "10px",
+                      marginBottom: "8px",
                     }}
                   >
+                    {/* Row 1 */}
                     <div>
-                      <div style={{ fontSize: "9px", color: "#64748b", fontWeight: 600 }}>LANDSLIDE RISK</div>
+                      <div style={{ fontSize: "9px", color: "#64748b", fontWeight: 600, letterSpacing: "0.04em" }}>LANDSLIDE RISK</div>
                       <div
                         style={{
                           fontSize: "16px",
@@ -297,7 +316,7 @@ export default function MapInner({
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: "9px", color: "#64748b", fontWeight: 600 }}>LIVE RAINFALL</div>
+                      <div style={{ fontSize: "9px", color: "#64748b", fontWeight: 600, letterSpacing: "0.04em" }}>24H TRIGGER RAIN</div>
                       <div style={{ fontSize: "14px", fontWeight: 800, fontFamily: "monospace", color: "#38bdf8" }}>
                         {inspectedLocation.rainfall24h} mm
                       </div>
@@ -307,8 +326,30 @@ export default function MapInner({
                         </div>
                       )}
                     </div>
+
+                    {/* Row 2 */}
                     <div>
-                      <div style={{ fontSize: "9px", color: "#64748b", fontWeight: 600 }}>TERRAIN SLOPE</div>
+                      <div style={{ fontSize: "9px", color: "#64748b", fontWeight: 600, letterSpacing: "0.04em" }}>72H ANTECEDENT RAIN</div>
+                      <div style={{ fontSize: "12px", fontWeight: 700, fontFamily: "monospace", color: "#7dd3fc" }}>
+                        {inspectedLocation.rainfall72h != null
+                          ? `${inspectedLocation.rainfall72h} mm`
+                          : `${Math.round(inspectedLocation.rainfall24h * 2.2)} mm`}
+                      </div>
+                      <div style={{ fontSize: "8.5px", color: "#64748b" }}>3-day soaking</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "9px", color: "#64748b", fontWeight: 600, letterSpacing: "0.04em" }}>API-15D INDEX</div>
+                      <div style={{ fontSize: "12px", fontWeight: 700, fontFamily: "monospace", color: "#a78bfa" }}>
+                        {inspectedLocation.api15d != null
+                          ? `${inspectedLocation.api15d.toFixed(1)} mm`
+                          : `${Math.round(inspectedLocation.rainfall24h * 1.6)} mm`}
+                      </div>
+                      <div style={{ fontSize: "8.5px", color: "#64748b" }}>k=0.87 decay</div>
+                    </div>
+
+                    {/* Row 3 */}
+                    <div>
+                      <div style={{ fontSize: "9px", color: "#64748b", fontWeight: 600, letterSpacing: "0.04em" }}>TERRAIN SLOPE</div>
                       <div
                         style={{
                           fontSize: "12px",
@@ -318,25 +359,74 @@ export default function MapInner({
                         }}
                       >
                         {inspectedLocation.slope}°
-                        <span
-                          style={{
-                            fontSize: "8.5px",
-                            marginLeft: "3px",
-                            fontWeight: 600,
-                            color: inspectedLocation.slope < 10 ? "#34d399" : "#94a3b8",
-                          }}
-                        >
+                        <span style={{ fontSize: "8.5px", marginLeft: "3px", fontWeight: 600, color: inspectedLocation.slope < 10 ? "#34d399" : "#94a3b8" }}>
                           ({inspectedLocation.slope < 10 ? "Flat" : inspectedLocation.slope < 20 ? "Gentle" : "Steep"})
                         </span>
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: "9px", color: "#64748b", fontWeight: 600 }}>SOIL SATURATION</div>
+                      <div style={{ fontSize: "9px", color: "#64748b", fontWeight: 600, letterSpacing: "0.04em" }}>SOIL SATURATION</div>
                       <div style={{ fontSize: "12px", fontWeight: 700, fontFamily: "monospace", color: "#10b981" }}>
                         {inspectedLocation.soilMoisture}%
                       </div>
                     </div>
                   </div>
+
+                  {/* Lithology Badge */}
+                  {inspectedLocation.lithologyIndex != null && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "5px 8px",
+                        borderRadius: "5px",
+                        background: inspectedLocation.lithologyIndex >= 5
+                          ? "rgba(239,68,68,0.10)"
+                          : inspectedLocation.lithologyIndex >= 3
+                          ? "rgba(168,85,247,0.10)"
+                          : "rgba(52,211,153,0.10)",
+                        border: `1px solid ${inspectedLocation.lithologyIndex >= 5 ? "rgba(239,68,68,0.30)" : inspectedLocation.lithologyIndex >= 3 ? "rgba(168,85,247,0.30)" : "rgba(52,211,153,0.30)"}`,
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <span style={{ fontSize: "9px", color: "#64748b", fontWeight: 700, letterSpacing: "0.05em" }}>LITHOLOGY</span>
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          fontWeight: 800,
+                          color: inspectedLocation.lithologyIndex >= 5
+                            ? "#ef4444"
+                            : inspectedLocation.lithologyIndex >= 3
+                            ? "#a855f7"
+                            : "#34d399",
+                        }}
+                      >
+                        {inspectedLocation.lithology || (
+                          inspectedLocation.lithologyIndex >= 5
+                            ? "⚠ Weathered Shale/Sandstone"
+                            : inspectedLocation.lithologyIndex >= 4
+                            ? "Sandstone Formation"
+                            : inspectedLocation.lithologyIndex >= 3
+                            ? "Granite / Crystalline"
+                            : "Alluvial Silt & River Sediment"
+                        )}
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: "9px",
+                          padding: "1px 5px",
+                          borderRadius: "3px",
+                          background: "rgba(255,255,255,0.06)",
+                          color: "#94a3b8",
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        GSI Index {inspectedLocation.lithologyIndex}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Geotechnical Hard-Gate Notice for Flat Terrain */}
                   {inspectedLocation.slope < 10 && (
