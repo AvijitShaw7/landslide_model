@@ -280,7 +280,7 @@ export function GISMap({
   };
 
   return (
-    <div className="flex-1 relative flex flex-col overflow-hidden">
+    <div className="w-full h-full relative flex flex-col overflow-hidden">
       {/* Map canvas */}
       <div className="flex-1 relative" style={{ minHeight: 0 }}>
         <MapInner
@@ -303,8 +303,8 @@ export function GISMap({
             backdropFilter: "blur(12px)",
           }}
         >
-          <div className="text-[11px] font-bold gradient-text">NER Landslide Risk Map</div>
-          <div className="text-[9px] flex items-center gap-1 mt-0.5" style={{ color: "var(--text-muted)" }}>
+          <div className="text-[11px] font-bold" style={{ color: "rgba(255,255,255,0.9)" }}>NER Landslide Risk Map</div>
+          <div className="text-[9px] flex items-center gap-1 mt-0.5" style={{ color: "rgba(255,255,255,0.7)" }}>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span>Click canvas to inspect custom coordinates</span>
           </div>
@@ -435,7 +435,7 @@ export function GISMap({
         >
           <div
             className="text-[10px] font-bold mb-1 flex items-center gap-1"
-            style={{ color: "var(--text-muted)" }}
+            style={{ color: "rgba(255,255,255,0.7)" }}
           >
             <Layers size={10} />
             LAYERS
@@ -450,11 +450,11 @@ export function GISMap({
                 style={{
                   background: isOn ? `rgba(${layerRgb(layer.color)},0.15)` : "rgba(255,255,255,0.04)",
                   border: `1px solid ${isOn ? layer.color : "transparent"}`,
-                  color: isOn ? layer.color : "var(--text-muted)",
+                  color: isOn ? layer.color : "rgba(255,255,255,0.6)",
                 }}
               >
                 {isOn ? <Eye size={10} /> : <EyeOff size={10} />}
-                <span style={{ color: isOn ? layer.color : "var(--text-muted)" }}>
+                <span style={{ color: isOn ? layer.color : "rgba(255,255,255,0.6)" }}>
                   {layer.icon}
                 </span>
                 {layer.label}
