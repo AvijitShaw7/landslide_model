@@ -42,6 +42,7 @@ export default function Home() {
     rainfallMap,
     isLoading,
     isOnline,
+    isMLInference,
     lastFetched,
     errors,
     refetch,
@@ -73,6 +74,8 @@ export default function Home() {
         soilMoisture: inspectedLocation.soilMoisture,
         slope: inspectedLocation.slope,
         trigger: inspectedLocation.trigger,
+        isMLInference: inspectedLocation.isMLInference,
+        modelType: inspectedLocation.modelType,
         lastUpdated: new Date().toISOString(),
         affectedPopulation: inspectedLocation.slope < 10 ? 0 : 3500,
         roadBlockages:
@@ -279,6 +282,7 @@ export default function Home() {
         rainfallMap={rainfallMap}
         isLoading={isLoading}
         isOnline={isOnline}
+        isMLInference={isMLInference}
         errors={errors}
         lastFetched={lastFetched}
         refetch={refetch}
@@ -335,6 +339,7 @@ export default function Home() {
             t={t}
             isInspected={Boolean(inspectedLocation)}
             onClearInspected={() => setInspectedLocation(null)}
+            isMLInference={displayedZone.isMLInference ?? isMLInference}
           />
 
           {/* Alert Broadcast */}

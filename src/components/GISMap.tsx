@@ -209,6 +209,13 @@ export function GISMap({
       let elevation: number | undefined = undefined;
       let isFlat = false;
       let terrainCategory: string | undefined = undefined;
+      let isMLInference = false;
+      let modelType: string | undefined = undefined;
+      let rainfall72h: number | undefined = undefined;
+      let api15d: number | undefined = undefined;
+      let lithologyIndex: number | undefined = undefined;
+      let lithology: string | undefined = undefined;
+      let isSimulated = false;
 
       if (rainRes.status === "fulfilled" && rainRes.value?.data) {
         const d = rainRes.value.data;
@@ -222,6 +229,13 @@ export function GISMap({
         elevation = d.elevation;
         isFlat = d.isFlat ?? (slope < 10);
         terrainCategory = d.terrainCategory;
+        isMLInference = Boolean(d.isMLInference);
+        modelType = d.modelType;
+        rainfall72h = d.rainfall72h;
+        api15d = d.api15d;
+        lithologyIndex = d.lithologyIndex;
+        lithology = d.lithology;
+        isSimulated = Boolean(d.isSimulated ?? (rainRes.status === "fulfilled" && (rainRes.value as any)?.isSimulated));
       } else {
         // Fallback: direct geotechnical slope calculation
         try {
@@ -259,6 +273,13 @@ export function GISMap({
         elevation,
         isFlat,
         terrainCategory,
+        isMLInference,
+        modelType,
+        rainfall72h,
+        api15d,
+        lithologyIndex,
+        lithology,
+        isSimulated,
         isLoading: false,
       };
 

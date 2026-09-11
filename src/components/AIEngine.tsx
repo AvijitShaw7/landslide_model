@@ -42,6 +42,7 @@ interface Props {
   t: Record<string, string>;
   isInspected?: boolean;
   onClearInspected?: () => void;
+  isMLInference?: boolean;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -59,7 +60,16 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export function AIEngine({ zone, rainfallLive, t, isInspected, onClearInspected }: Props) {
+export function AIEngine({
+  zone,
+  rainfallLive,
+  t,
+  isInspected,
+  onClearInspected,
+  isMLInference,
+}: Props) {
+  const isML = Boolean(zone.isMLInference ?? isMLInference);
+  const currentModelType = zone.modelType || (isML ? "RandomForest-v2 Geotechnical" : "Heuristic Fallback");
   const [horizon, setHorizon] = useState<ForecastHorizon>(24);
   const [showShap, setShowShap] = useState(true);
   const [dataMode, setDataMode] = useState<"BASELINE" | "LIVE">("LIVE");
@@ -73,64 +83,82 @@ export function AIEngine({ zone, rainfallLive, t, isInspected, onClearInspected 
         }))
       : rawForecast;
 
-  const dynamicShapFactors =
+  const LITHO_NAMES: Record<number, string> = {
+    1: "Alluvial Plain", 2: "Semi-Alluvial", 3: "Granite/Crystalline",
+    4: "Sandstone", 5: "Weathered Shale",
+  };
+  const lithologyLabel = LITHO_NAMES[Math.round(zone.lithologyIndex ?? 3)] ?? `Index ${zone.lithologyIndex?.toFixed(0) ?? "3"}`;
+
+    const dynamicShapFactors =
     zone.slope < 10
       ? [
           {
-            name: "Topographic Gradient",
+            name: "Slope Gradient (°)",
             contribution: -0.95,
             value: `${zone.slope.toFixed(1)}°`,
-            unit: " (Flat Plain)",
+            unit: " — Flat Plain",
           },
           {
-            name: "Slope Stability Margin (FoS)",
-            contribution: -0.9,
+            name: "Factor of Safety (FoS)",
+            contribution: -0.90,
             value: "> 4.0",
-            unit: " (Stable)",
+            unit: " (Mechanically Stable)",
           },
           {
-            name: "24h Rainfall Total",
-            contribution: 0.04,
+            name: "24h Trigger Rain",
+            contribution: 0.03,
             value: `${zone.rainfall24h}`,
             unit: " mm",
           },
           {
-            name: "Soil Moisture Saturation",
+            name: "72h Antecedent Rain",
             contribution: 0.02,
+            value: `${zone.rainfall72h ?? Math.round(zone.rainfall24h * 2.2)}`,
+            unit: " mm",
+          },
+          {
+            name: "Soil Moisture Saturation",
+            contribution: 0.01,
             value: `${zone.soilMoisture}`,
             unit: "%",
           },
         ]
       : [
           {
-            name: "Terrain Slope Angle",
-            contribution: zone.slope >= 35 ? 0.42 : zone.slope >= 25 ? 0.3 : 0.12,
+            name: "Slope Gradient (°)",
+            contribution: zone.slope >= 35 ? 0.82 : zone.slope >= 25 ? 0.65 : 0.45,
             value: `${zone.slope.toFixed(1)}°`,
-            unit: zone.slope >= 30 ? " (Steep Mountain)" : " (Undulating)",
+            unit: zone.slope >= 35 ? " — Steep Scarp" : zone.slope >= 25 ? " — Moderate Hill" : " — Undulating",
           },
           {
-            name: "24h Accumulated Rain",
-            contribution: zone.rainfall24h > 100 ? 0.38 : zone.rainfall24h > 50 ? 0.25 : 0.08,
+            name: "Lithological Formation",
+            contribution: (zone.lithologyIndex ?? 3) >= 5 ? 0.34 : (zone.lithologyIndex ?? 3) >= 3 ? 0.22 : 0.08,
+            value: lithologyLabel,
+            unit: ` (Index ${zone.lithologyIndex?.toFixed(0) ?? "3"})`,
+          },
+          {
+            name: "72h Antecedent Rain",
+            contribution: (zone.rainfall72h ?? 0) > 200 ? 0.28 : (zone.rainfall72h ?? 0) > 100 ? 0.18 : 0.09,
+            value: `${zone.rainfall72h ?? Math.round(zone.rainfall24h * 2.2)}`,
+            unit: " mm — 3-day soaking",
+          },
+          {
+            name: "24h Trigger Rain",
+            contribution: zone.rainfall24h > 100 ? 0.18 : zone.rainfall24h > 50 ? 0.12 : 0.05,
             value: `${zone.rainfall24h}`,
-            unit: " mm",
+            unit: " mm — daily trigger",
           },
           {
-            name: "Soil Saturation Index",
-            contribution: zone.soilMoisture > 80 ? 0.28 : zone.soilMoisture > 65 ? 0.18 : 0.05,
+            name: "Soil Moisture Saturation",
+            contribution: zone.soilMoisture > 85 ? 0.14 : zone.soilMoisture > 70 ? 0.09 : 0.04,
             value: `${zone.soilMoisture}`,
             unit: "%",
           },
           {
-            name: "InSAR Surface Creep",
-            contribution: zone.slope >= 25 ? 0.22 : 0.04,
-            value: zone.slope >= 25 ? "4.8" : "0.2",
-            unit: " mm/day",
-          },
-          {
-            name: "Fault Line Proximity",
-            contribution: 0.15,
-            value: "1.2",
-            unit: " km",
+            name: "API-15d Index",
+            contribution: (zone.api15d ?? 0) > 100 ? 0.10 : (zone.api15d ?? 0) > 50 ? 0.06 : 0.02,
+            value: `${zone.api15d?.toFixed(1) ?? Math.round(zone.rainfall24h * 1.6)}`,
+            unit: " mm — 15-day antecedent",
           },
         ];
 
@@ -163,7 +191,7 @@ export function AIEngine({ zone, rainfallLive, t, isInspected, onClearInspected 
               {t.aiEngine}
             </div>
             <div className="text-[9px]" style={{ color: "var(--text-muted)" }}>
-              Multi-Modal Fusion · SHAP XAI
+              FoS-Anchored RF · Caine Threshold · SHAP XAI
             </div>
           </div>
         </div>
@@ -206,6 +234,27 @@ export function AIEngine({ zone, rainfallLive, t, isInspected, onClearInspected 
             <span>LIVE</span>
           </button>
         </div>
+      </div>
+
+      {/* ML Engine Status Banner */}
+      <div
+        className="px-3 py-1.5 flex items-center justify-between border-b text-[10px]"
+        style={{
+          background: isML ? "rgba(16,185,129,0.08)" : "rgba(245,158,11,0.08)",
+          borderColor: isML ? "rgba(16,185,129,0.22)" : "rgba(245,158,11,0.22)",
+        }}
+      >
+        <div className="flex items-center gap-1.5 font-bold" style={{ color: isML ? "#34d399" : "#fbbf24" }}>
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              isML ? "bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]" : "bg-amber-400"
+            }`}
+          />
+          <span>{isML ? `ML Engine: Active (${currentModelType})` : "Heuristic Fallback (Offline)"}</span>
+        </div>
+        <span className="text-[9px] font-mono text-zinc-400">
+          {isML ? "150 Trees · FoS/Caine-Anchored v2" : "Deterministic Mode"}
+        </span>
       </div>
 
       {/* Dynamic Target Inspection Banner */}
