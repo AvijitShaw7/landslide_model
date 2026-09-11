@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import {
   Satellite,
   Bell,
@@ -101,7 +102,7 @@ export function HeaderBar({
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-base gradient-text">{t.title}</span>
+            <span className="font-bold text-base gradient-text" style={{ color: "rgba(255,255,255,0.9)" }}>{t.title}</span>
             <span
               className="text-[9px] font-bold px-1.5 py-0.5 rounded"
               style={{ background: "rgba(239,68,68,0.15)", color: "var(--accent-red)", border: "1px solid rgba(239,68,68,0.3)" }}
@@ -109,7 +110,7 @@ export function HeaderBar({
               LIVE
             </span>
           </div>
-          <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+          <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.6)" }}>
             {t.subtitle} · MDoNER · SIH 2024
           </div>
         </div>
@@ -127,7 +128,7 @@ export function HeaderBar({
             style={{
               background: activeRole === role.id ? "rgba(59,130,246,0.12)" : "transparent",
               borderColor: activeRole === role.id ? "rgba(59,130,246,0.4)" : "rgba(255,255,255,0.08)",
-              color: activeRole === role.id ? "#60a5fa" : "var(--text-secondary)",
+              color: activeRole === role.id ? "#60a5fa" : "rgba(255,255,255,0.7)",
             }}
           >
             <span className="hidden md:inline">{role.label}</span>
@@ -141,7 +142,7 @@ export function HeaderBar({
         {/* Time */}
         <div
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border mono text-xs"
-          style={{ borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
+          style={{ borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)" }}
         >
           <Clock size={12} style={{ color: "var(--accent-cyan)" }} />
           {mounted ? time.toLocaleTimeString("en-IN", { hour12: false }) : "--:--:--"} IST
@@ -157,7 +158,7 @@ export function HeaderBar({
               style={{
                 background: language === lang.code ? "rgba(59,130,246,0.15)" : "transparent",
                 borderColor: language === lang.code ? "rgba(59,130,246,0.4)" : "transparent",
-                color: language === lang.code ? "#60a5fa" : "var(--text-muted)",
+                color: language === lang.code ? "#60a5fa" : "rgba(255,255,255,0.6)",
               }}
             >
               {lang.label}
@@ -172,7 +173,7 @@ export function HeaderBar({
           style={{
             background: lowBandwidth ? "rgba(16,185,129,0.12)" : "transparent",
             borderColor: lowBandwidth ? "rgba(16,185,129,0.3)" : "var(--border-subtle)",
-            color: lowBandwidth ? "var(--accent-emerald)" : "var(--text-muted)",
+            color: lowBandwidth ? "var(--accent-emerald)" : "rgba(255,255,255,0.6)",
           }}
           title="Toggle Low-Bandwidth / USSD Mode"
         >
